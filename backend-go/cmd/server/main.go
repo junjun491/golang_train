@@ -1,12 +1,13 @@
 package main
 
 import (
+	"golang_train/backend-go/internal/db"
 	"golang_train/backend-go/internal/handler"
-
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
+	db.ConnectDB()
 	r := gin.Default()
 
 	r.GET("/healthz", func(c *gin.Context) {
