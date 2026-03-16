@@ -2,7 +2,11 @@ package handler
 
 import (
 	"fmt"
+	"log"
+	"context"
+	"net/http"
 
+	"golang_train/backend-go/internal/db"
 	"golang_train/backend-go/internal/model"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +17,37 @@ var tasks = []model.Task{
 }
 
 func GetTasks(c *gin.Context) {
-	c.JSON(200, tasks)
+	rows, err := db.DB.Query(context.Background(), `
+		SELECT id, title, completed
+		FROM tasks
+		ORDER BY id ASC
+	`)
+	if err != nil {
+		log.Println("GetTasks query error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	tasks := []model.Task{}
+
+	for rows.Next() {
+		var task model.Task
+		if err := rows.Scan(&task.ID, &task.Title, &task.Completed); err != nil {
+			log.Println("GetTasks scan error:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Println("GetTasks rows error:", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, tasks)
 }
 
 func CreateTask(c *gin.Context) {

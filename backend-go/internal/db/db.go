@@ -17,5 +17,9 @@ func ConnectDB() {
 		log.Fatal(err)
 	}
 
+	if err := pool.Ping(context.Background()); err != nil {
+		log.Fatal(err)
+	}
+
 	DB = pool
 }
