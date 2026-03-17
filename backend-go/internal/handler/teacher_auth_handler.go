@@ -1,13 +1,11 @@
 package handler
 
 import (
-	"context"
 	"net/http"
 	"strings"
-	"time"
 
 	"golang_train/backend-go/internal/auth"
-	"golang_train/backend-go/internal/db"
+	"golang_train/backend-go/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,6 +19,15 @@ type RegisterTeacherParams struct {
 	Email                string `json:"email"`
 	Password             string `json:"password"`
 	PasswordConfirmation string `json:"password_confirmation"`
+}
+
+type LoginTeacherRequest struct {
+	Teacher LoginTeacherParams `json:"teacher"`
+}
+
+type LoginTeacherParams struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type TeacherResponseData struct {
@@ -70,14 +77,8 @@ func RegisterTeacher(c *gin.Context) {
 		return
 	}
 
-	var existingID int
-	err := db.DB.QueryRow(
-		context.Background(),
-		`SELECT id FROM teachers WHERE email = $1`,
-		req.Teacher.Email,
-	).Scan(&existingID)
-
-	if err == nil {
+	existingTeacher, err := repository.FindTeacherByEmail(req.Teacher.Email)
+	if err == nil && existingTeacher != nil {
 		c.JSON(http.StatusUnprocessableEntity, ErrorResponse{
 			Errors: []string{"email has already been taken"},
 		})
@@ -92,32 +93,11 @@ func RegisterTeacher(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
-
-	var id int
-	var name *string
-	var email string
-
-	err = db.DB.QueryRow(
-		context.Background(),
-		`
-		INSERT INTO teachers (
-			email,
-			encrypted_password,
-			created_at,
-			updated_at,
-			name
-		)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, name, email
-		`,
+	teacher, err := repository.CreateTeacher(
 		req.Teacher.Email,
 		hashedPassword,
-		now,
-		now,
 		req.Teacher.Name,
-	).Scan(&id, &name, &email)
-
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Errors: []string{err.Error()},
@@ -125,7 +105,7 @@ func RegisterTeacher(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.GenerateTeacherToken(id)
+	token, err := auth.GenerateTeacherToken(teacher.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Errors: []string{"failed to generate token"},
@@ -136,20 +116,11 @@ func RegisterTeacher(c *gin.Context) {
 	c.Header("Authorization", "Bearer "+token)
 	c.JSON(http.StatusCreated, TeacherResponse{
 		Data: TeacherResponseData{
-			ID:    id,
-			Name:  name,
-			Email: email,
+			ID:    teacher.ID,
+			Name:  teacher.Name,
+			Email: teacher.Email,
 		},
 	})
-}
-
-type LoginTeacherRequest struct {
-	Teacher LoginTeacherParams `json:"teacher"`
-}
-
-type LoginTeacherParams struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
 }
 
 func LoginTeacher(c *gin.Context) {
@@ -163,21 +134,7 @@ func LoginTeacher(c *gin.Context) {
 
 	req.Teacher.Email = strings.TrimSpace(req.Teacher.Email)
 
-	var id int
-	var name *string
-	var email string
-	var encryptedPassword string
-
-	err := db.DB.QueryRow(
-		context.Background(),
-		`
-		SELECT id, name, email, encrypted_password
-		FROM teachers
-		WHERE email = $1
-		`,
-		req.Teacher.Email,
-	).Scan(&id, &name, &email, &encryptedPassword)
-
+	teacher, err := repository.FindTeacherByEmail(req.Teacher.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Errors: []string{"Invalid email or password"},
@@ -185,14 +142,14 @@ func LoginTeacher(c *gin.Context) {
 		return
 	}
 
-	if !auth.CheckPassword(req.Teacher.Password, encryptedPassword) {
+	if !auth.CheckPassword(req.Teacher.Password, teacher.EncryptedPassword) {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Errors: []string{"Invalid email or password"},
 		})
 		return
 	}
 
-	token, err := auth.GenerateTeacherToken(id)
+	token, err := auth.GenerateTeacherToken(teacher.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Errors: []string{"failed to generate token"},
@@ -203,9 +160,9 @@ func LoginTeacher(c *gin.Context) {
 	c.Header("Authorization", "Bearer "+token)
 	c.JSON(http.StatusOK, TeacherResponse{
 		Data: TeacherResponseData{
-			ID:    id,
-			Name:  name,
-			Email: email,
+			ID:    teacher.ID,
+			Name:  teacher.Name,
+			Email: teacher.Email,
 		},
 	})
 }
@@ -227,20 +184,7 @@ func GetMe(c *gin.Context) {
 		return
 	}
 
-	var id int
-	var name *string
-	var email string
-
-	err := db.DB.QueryRow(
-		context.Background(),
-		`
-		SELECT id, name, email
-		FROM teachers
-		WHERE id = $1
-		`,
-		currentTeacherID,
-	).Scan(&id, &name, &email)
-
+	teacher, err := repository.FindTeacherByID(currentTeacherID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, ErrorResponse{
 			Errors: []string{"Unauthorized"},
@@ -250,9 +194,9 @@ func GetMe(c *gin.Context) {
 
 	c.JSON(http.StatusOK, TeacherResponse{
 		Data: TeacherResponseData{
-			ID:    id,
-			Name:  name,
-			Email: email,
+			ID:    teacher.ID,
+			Name:  teacher.Name,
+			Email: teacher.Email,
 		},
 	})
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+	"github.com/joho/godotenv"
 	"golang_train/backend-go/internal/db"
 	"golang_train/backend-go/internal/handler"
 	"golang_train/backend-go/internal/middleware"
@@ -8,6 +10,12 @@ import (
 )
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Println(".env file not found")
+	}
+
 	db.ConnectDB()
 	r := gin.Default()
 
