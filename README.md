@@ -33,7 +33,6 @@ PostgreSQL
 - Go
 - Gin
 - PostgreSQL
-- pgx
 - JWT
 - Docker Compose
 
