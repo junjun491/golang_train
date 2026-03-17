@@ -1,244 +1,126 @@
 # backend-go
 
-Go / Gin / PostgreSQL で作成したAPIです。  
-既存のRailsポートフォリオで実装していた teacher 認証導線の一部を、Goで再実装しています。
+Go / Gin / PostgreSQL で作成した REST API です。
 
-## 実装している機能
+既存の Rails ポートフォリオ（Next.js + Rails API + Terraform + ECS）で実装していた  
+**teacher 認証導線の一部を Go で再実装したバックエンド API**です。
 
-- health check
-- teachers 一覧取得
-- teacher 1件取得
-- teacher 登録
-- teacher ログイン
-- teacher 自分情報取得
-- JWT 認証
-- bcrypt によるパスワードハッシュ化
+---
 
-## 技術スタック
+# このリポジトリの目的
+
+このリポジトリでは以下を目的に実装しています。
+
+- Go による Web API 実装
+- JWT を用いた認証フロー
+- PostgreSQL 接続
+- Repository 層による責務分離
+
+既存ポートフォリオでは以下の構成で動作させています。
+
+```
+Browser
+↓
+Next.js
+↓
+ALB
+↓
+Go API
+↓
+PostgreSQL
+```
+
+---
+
+# 技術スタック
 
 - Go
 - Gin
 - PostgreSQL
 - pgx
 - JWT
-- bcrypt
 - Docker Compose
-
-## ディレクトリ構成
-
-@@@
-backend-go
-├ cmd
-│ └ server
-│ └ main.go
-├ internal
-│ ├ auth
-│ │ ├ jwt.go
-│ │ └ password.go
-│ ├ config
-│ │ └ config.go
-│ ├ db
-│ │ └ db.go
-│ ├ handler
-│ │ ├ task_handler.go
-│ │ ├ teacher_auth_handler.go
-│ │ └ teacher_handler.go
-│ ├ middleware
-│ │ └ auth_middleware.go
-│ ├ model
-│ │ ├ task.go
-│ │ └ teacher.go
-│ └ repository
-│ └ teacher_repository.go
-├ docker-compose.yml
-├ schema.sql
-├ .env.example
-└ go.mod
-@@@
-
-## セットアップ
-
-### 1. DBを起動
-
-@@@
-docker compose up -d
-@@@
-
-### 2. 環境変数ファイルを作成
-
-@@@
-cp .env.example .env
-@@@
-
-.env の例:
-
-@@@
-JWT_SECRET=dev-secret
-DATABASE_URL=postgres://appuser:password@localhost:5432/app_db
-@@@
-
-### 3. スキーマを投入
-
-@@@
-docker exec -i go-app-db psql -U appuser -d app_db < schema.sql
-@@@
-
-### 4. APIサーバを起動
-
-@@@
-go run ./cmd/server
-@@@
-
-## 動作確認
-
-### health check
-
-@@@
-curl localhost:8080/healthz
-@@@
-
-期待レスポンス:
-
-@@@
-{"status":"ok"}
-@@@
 
 ---
 
-## API一覧
+# Architecture
+
+この API は以下のような構成での利用を想定しています。
+
+```
+Browser
+↓
+Next.js (Frontend)
+↓
+ALB
+↓
+Go API
+↓
+PostgreSQL
+```
+
+既存ポートフォリオでは以下のインフラ構成で動作しています。
+
+- Terraform
+- ECS Fargate
+- ALB
+- RDS (PostgreSQL)
+- Secrets Manager
+- GitHub Actions
+
+---
+
+# セットアップ
+
+### DB起動
+
+```
+docker compose up -d
+```
+
+### APIサーバ起動
+
+```
+go run ./cmd/server
+```
+
+---
+
+# 動作確認
+
+health check
+
+```
+curl localhost:3001/healthz
+```
+
+レスポンス
+
+```
+{"status":"ok"}
+```
+
+---
+
+# 実装している主なエンドポイント
 
 - GET /healthz
-- GET /teachers
-- GET /teachers/:id
 - POST /teachers/register
 - POST /teachers/login
 - GET /teachers/me
 
----
+JWT 認証は Authorization ヘッダで行います。
 
-## API利用例
-
-### teachers 一覧取得
-
-@@@
-curl localhost:8080/teachers
-@@@
-
----
-
-### teacher 1件取得
-
-@@@
-curl localhost:8080/teachers/1
-@@@
-
----
-
-### teacher 登録
-
-@@@
-curl -i -X POST localhost:8080/teachers/register \
- -H "Content-Type: application/json" \
- -d '{
-"teacher": {
-"name": "Atsushi",
-"email": "test@example.com",
-"password": "password123",
-"password_confirmation": "password123"
-}
-}'
-@@@
-
-成功時のレスポンス例:
-
-@@@
-HTTP/1.1 201 Created
+```
 Authorization: Bearer <JWT>
-@@@
-
-@@@
-{
-"data": {
-"id": 1,
-"name": "Atsushi",
-"email": "test@example.com"
-}
-}
-@@@
+```
 
 ---
 
-### teacher ログイン
+# 今後の改善候補
 
-@@@
-curl -i -X POST localhost:8080/teachers/login \
- -H "Content-Type: application/json" \
- -d '{
-"teacher": {
-"email": "test@example.com",
-"password": "password123"
-}
-}'
-@@@
-
-成功時のレスポンス例:
-
-@@@
-HTTP/1.1 200 OK
-Authorization: Bearer <JWT>
-@@@
-
-@@@
-{
-"data": {
-"id": 1,
-"name": "Atsushi",
-"email": "test@example.com"
-}
-}
-@@@
-
----
-
-### teacher 自分情報取得
-
-ログインまたは登録で取得した JWT を Authorization ヘッダに付与して呼び出します。
-
-@@@
-curl -i localhost:8080/teachers/me \
- -H "Authorization: Bearer <JWT>"
-@@@
-
-成功時のレスポンス例:
-
-@@@
-{
-"data": {
-"id": 1,
-"name": "Atsushi",
-"email": "test@example.com"
-}
-}
-@@@
-
----
-
-## このAPIの位置づけ
-
-この backend-go は、既存のRailsポートフォリオで実装していた teacher 認証導線をベースに、以下を Go で再実装したものです。
-
-- teacher 登録
-- teacher ログイン
-- 認証済み teacher 情報取得
-- JWT 認証 middleware
-
-単純な Todo API ではなく、既存アプリのドメインと認証導線を別言語で再実装することを目的にしています。
-
-## 今後の改善候補
-
-- repository 層の拡張
 - service 層の追加
-- classroom / student / message 系APIの追加
-- Docker で Go API も起動できる構成への拡張
+- classroom / student API 追加
+- Docker で Go API 起動
 - CI 追加
-- 環境ごとの設定整理
+- テスト追加
