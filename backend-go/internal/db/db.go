@@ -9,10 +9,8 @@ import (
 
 var DB *pgxpool.Pool
 
-func ConnectDB() {
-	dsn := "postgres://appuser:password@localhost:5432/app_db"
-
-	pool, err := pgxpool.New(context.Background(), dsn)
+func ConnectDB(databaseURL string) {
+	pool, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -22,4 +20,5 @@ func ConnectDB() {
 	}
 
 	DB = pool
+	log.Println("database connected")
 }

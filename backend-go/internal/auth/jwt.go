@@ -2,24 +2,20 @@ package auth
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func getJWTSecret() ([]byte, error) {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is not set")
-	}
-	return []byte(secret), nil
+var jwtSecret []byte
+
+func InitJWT(secret string) {
+	jwtSecret = []byte(secret)
 }
 
 func GenerateTeacherToken(teacherID int) (string, error) {
-	secret, err := getJWTSecret()
-	if err != nil {
-		return "", err
+	if len(jwtSecret) == 0 {
+		return "", fmt.Errorf("jwt secret is not initialized")
 	}
 
 	claims := jwt.MapClaims{
@@ -28,17 +24,16 @@ func GenerateTeacherToken(teacherID int) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secret)
+	return token.SignedString(jwtSecret)
 }
 
 func ParseTeacherToken(tokenString string) (int, error) {
-	secret, err := getJWTSecret()
-	if err != nil {
-		return 0, err
+	if len(jwtSecret) == 0 {
+		return 0, fmt.Errorf("jwt secret is not initialized")
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		return secret, nil
+		return jwtSecret, nil
 	})
 	if err != nil {
 		return 0, err

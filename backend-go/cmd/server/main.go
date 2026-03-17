@@ -2,27 +2,34 @@ package main
 
 import (
 	"log"
-	"github.com/joho/godotenv"
+
+	"golang_train/backend-go/internal/auth"
+	"golang_train/backend-go/internal/config"
 	"golang_train/backend-go/internal/db"
 	"golang_train/backend-go/internal/handler"
 	"golang_train/backend-go/internal/middleware"
+
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Println(".env file not found")
 	}
 
-	db.ConnectDB()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	auth.InitJWT(cfg.JWTSecret)
+	db.ConnectDB(cfg.DatabaseURL)
+
 	r := gin.Default()
 
 	r.GET("/healthz", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
+		c.JSON(200, gin.H{"status": "ok"})
 	})
 
 	r.GET("/teachers", handler.GetTeachers)
