@@ -16,10 +16,9 @@ func main() {
 		})
 	})
 
-	r.GET("/tasks", handler.GetTasks)
-	r.POST("/tasks", handler.CreateTask)
-	r.PUT("/tasks/:id", handler.UpdateTask)
-	r.DELETE("/tasks/:id", handler.DeleteTask)
+	r.GET("/teachers", handler.GetTeachers)
+	r.GET("/teachers/:id", handler.GetTeacher)
+	r.POST("/teachers/register", handler.RegisterTeacher)
 
 	r.Run(":8080")
 }
