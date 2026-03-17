@@ -1,28 +1,35 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"os"
 )
 
 type Config struct {
-	JWTSecret  string
+	Port        string
 	DatabaseURL string
+	JWTSecret   string
 }
 
 func Load() (*Config, error) {
-	cfg := &Config{
-		JWTSecret:  os.Getenv("JWT_SECRET"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		return nil, errors.New("DATABASE_URL is required")
 	}
 
-	if cfg.JWTSecret == "" {
-		return nil, fmt.Errorf("JWT_SECRET is not set")
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		return nil, errors.New("JWT_SECRET is required")
 	}
 
-	if cfg.DatabaseURL == "" {
-		return nil, fmt.Errorf("DATABASE_URL is not set")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3001"
 	}
 
-	return cfg, nil
+	return &Config{
+		Port:        port,
+		DatabaseURL: databaseURL,
+		JWTSecret:   jwtSecret,
+	}, nil
 }

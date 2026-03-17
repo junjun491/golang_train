@@ -105,7 +105,7 @@ func RegisterTeacher(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.GenerateTeacherToken(teacher.ID)
+	token, err := auth.GenerateToken("teacher", int64(teacher.ID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Errors: []string{"failed to generate token"},
@@ -149,7 +149,7 @@ func LoginTeacher(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.GenerateTeacherToken(teacher.ID)
+	token, err := auth.GenerateToken("teacher", int64(teacher.ID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Errors: []string{"failed to generate token"},
@@ -176,13 +176,7 @@ func GetMe(c *gin.Context) {
 		return
 	}
 
-	currentTeacherID, ok := currentTeacherIDValue.(int)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, ErrorResponse{
-			Errors: []string{"Unauthorized"},
-		})
-		return
-	}
+	currentTeacherID := currentTeacherIDValue.(int)
 
 	teacher, err := repository.FindTeacherByID(currentTeacherID)
 	if err != nil {
@@ -192,11 +186,11 @@ func GetMe(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, TeacherResponse{
-		Data: TeacherResponseData{
-			ID:    teacher.ID,
-			Name:  teacher.Name,
-			Email: teacher.Email,
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"id":    teacher.ID,
+			"name":  teacher.Name,
+			"email": teacher.Email,
 		},
 	})
 }
