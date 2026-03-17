@@ -8,6 +8,7 @@ module "ecs" {
   alb_security_group_id = var.alb_security_group_id
   frontend_tg_arn       = var.frontend_tg_arn
   backend_tg_arn        = var.backend_tg_arn
+  jwt_secret_arn = var.jwt_secret_arn
 
   backend_image  = var.backend_image
   frontend_image = var.frontend_image
@@ -16,8 +17,6 @@ module "ecs" {
   rds_security_group_id = var.rds_security_group_id
 
   tags = var.tags
-
-  rails_secret_key_base_secret_arn = var.rails_secret_key_base_secret_arn
 }
 
 output "cluster_name" {

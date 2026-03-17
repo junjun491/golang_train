@@ -11,8 +11,8 @@ terraform {
     }
   }
   backend "s3" {
-    bucket         = "otayori-tfstate-nakase"  # ← さっきのOutputsのbucketに合わせる
-    key            = "dev/terraform.tfstate"                # 環境ごとにキーを分ける
+    bucket         = "otayori-tfstate-nakase" # ← さっきのOutputsのbucketに合わせる
+    key            = "dev/terraform.tfstate"  # 環境ごとにキーを分ける
     region         = "ap-northeast-1"
     dynamodb_table = "terraform-lock"
     encrypt        = true

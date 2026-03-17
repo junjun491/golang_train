@@ -1,7 +1,7 @@
 data "aws_caller_identity" "current" {}
 
 data "aws_ecr_repository" "backend" {
-  name = "otayori-backend"
+  name = "otayori-backend-go"
 }
 
 data "aws_ecr_repository" "frontend" {
@@ -27,20 +27,19 @@ module "network" {
   }
 }
 
-#module "ecr" {
-#  source = "../../infrastructure_modules/ecr"
+# module "ecr" {
+#   source = "../../infrastructure_modules/ecr"
 #
-#  # この環境で使うリポジトリ名を列挙
-#  repositories = [
-#    "otayori-backend",
-#    "otayori-frontend",
-#  ]
+#   repositories = [
+#     "otayori-backend-go",
+#     "otayori-frontend",
+#   ]
 #
-#  tags = {
-#    Environment = "dev"
-#    Project     = "otayori"
-#  }
-#}
+#   tags = {
+#     Environment = "dev"
+#     Project     = "otayori"
+#   }
+# }
 
 module "database" {
   source = "../../infrastructure_modules/database"
@@ -64,8 +63,8 @@ module "alb" {
   vpc_id            = module.network.vpc_id
   public_subnet_ids = module.network.public_subnet_ids
 
-  frontend_port = 3000      # 後で ECS と合わせる
-  backend_port  = 3001    # Rails API の想定ポート（あとで調整OK）
+  frontend_port = 3000
+  backend_port  = 3001
 
   tags = {
     Environment = "dev"
@@ -83,11 +82,11 @@ module "ecs" {
   alb_security_group_id = module.alb.security_group_id
   frontend_tg_arn       = module.alb.target_group_arns["frontend"]
   backend_tg_arn        = module.alb.target_group_arns["backend"]
+  jwt_secret_arn        = "arn:aws:secretsmanager:ap-northeast-1:102464981360:secret:otayori/dev/go/jwt_secret-mF9KyT"
 
   backend_image  = "${data.aws_ecr_repository.backend.repository_url}:dev"
   frontend_image = "${data.aws_ecr_repository.frontend.repository_url}:dev"
 
-  # DB 接続URLをここで組み立てて渡す
   database_url = format(
     "postgres://%s:%s@%s:%d/%s",
     module.database.username,
@@ -103,18 +102,16 @@ module "ecs" {
     Environment = "dev"
     Project     = "otayori"
   }
-
-  rails_secret_key_base_secret_arn = "arn:aws:secretsmanager:ap-northeast-1:102464981360:secret:otayori/dev/rails/secret_key_base-XjGrvM"
 }
 
-#module "iam_github_oidc" {
-#  source = "../../infrastructure_modules/iam_github_oidc"
+# module "iam_github_oidc" {
+#   source = "../../infrastructure_modules/iam_github_oidc"
 #
-#  name_prefix       = "otayori-dev"
-#  github_repository = "junjun491/otayori_app:ref:refs/heads/main" # ← ここを自分の GitHub リポジトリに変更 (例: "nakaseatsushi/otayori-app")
+#   name_prefix       = "otayori-dev"
+#   github_repository = "junjun491/otayori_app:ref:refs/heads/main"
 #
-#  tags = {
-#    Environment = "dev"
-#    Project     = "otayori"
-#  }
-#}
+#   tags = {
+#     Environment = "dev"
+#     Project     = "otayori"
+#   }
+# }

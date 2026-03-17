@@ -46,7 +46,6 @@ resource "aws_iam_role_policy_attachment" "task_execution_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Secrets Manager から SECRET_KEY_BASE を読むための権限
 resource "aws_iam_role_policy" "task_execution_secrets" {
   name = "${var.name_prefix}-ecs-exec-secrets"
   role = aws_iam_role.task_execution.name
@@ -60,13 +59,13 @@ resource "aws_iam_role_policy" "task_execution_secrets" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Resource = var.rails_secret_key_base_secret_arn
+        Resource = var.jwt_secret_arn
       }
     ]
   })
 }
 
-# アプリ用タスクロール（現状は特別な権限なし）
+# アプリ用タスクロール
 resource "aws_iam_role" "task_role" {
   name               = "${var.name_prefix}-ecs-task-role"
   assume_role_policy = data.aws_iam_policy_document.ecs_task_assume_role.json
@@ -80,7 +79,6 @@ resource "aws_security_group" "ecs_tasks" {
   description = "Security group for ECS tasks"
   vpc_id      = var.vpc_id
 
-  # 外には NAT 経由でなんでも出られる
   egress {
     from_port   = 0
     to_port     = 0
@@ -103,7 +101,7 @@ resource "aws_security_group_rule" "rds_ingress_from_ecs" {
   source_security_group_id = aws_security_group.ecs_tasks.id
 }
 
-# backend Task Definition
+# backend Task Definition (Go API)
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.name_prefix}-backend"
   network_mode             = "awsvpc"
@@ -129,14 +127,6 @@ resource "aws_ecs_task_definition" "backend" {
 
       environment = [
         {
-          name  = "RAILS_ENV"
-          value = "production"
-        },
-        {
-          name  = "RACK_ENV"
-          value = "production"
-        },
-        {
           name  = "PORT"
           value = "3001"
         },
@@ -148,8 +138,8 @@ resource "aws_ecs_task_definition" "backend" {
 
       secrets = [
         {
-          name      = "SECRET_KEY_BASE"
-          valueFrom = var.rails_secret_key_base_secret_arn
+          name      = "JWT_SECRET"
+          valueFrom = var.jwt_secret_arn
         }
       ]
 
@@ -193,8 +183,7 @@ resource "aws_ecs_task_definition" "frontend" {
         {
           name  = "NODE_ENV"
           value = "production"
-        },
-        # API_BASE_URL など必要ならここに追加
+        }
       ]
 
       logConfiguration = {
@@ -218,8 +207,8 @@ resource "aws_ecs_service" "backend" {
   desired_count   = 1
 
   network_configuration {
-    subnets         = var.private_subnet_ids
-    security_groups = [aws_security_group.ecs_tasks.id]
+    subnets          = var.private_subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
 
@@ -247,8 +236,8 @@ resource "aws_ecs_service" "frontend" {
   desired_count   = 1
 
   network_configuration {
-    subnets         = var.private_subnet_ids
-    security_groups = [aws_security_group.ecs_tasks.id]
+    subnets          = var.private_subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
 
@@ -263,17 +252,7 @@ resource "aws_ecs_service" "frontend" {
   }
 }
 
-# ALB から ECS タスクへの HTTP/80
-resource "aws_security_group_rule" "ecs_from_alb_80" {
-  type                     = "ingress"
-  from_port                = 80
-  to_port                  = 80
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ecs_tasks.id
-  source_security_group_id = var.alb_security_group_id
-}
-
-# ALB → frontend (3000)
+# ALB → frontend
 resource "aws_security_group_rule" "ecs_from_alb_3000" {
   type                     = "ingress"
   from_port                = 3000
@@ -283,7 +262,7 @@ resource "aws_security_group_rule" "ecs_from_alb_3000" {
   source_security_group_id = var.alb_security_group_id
 }
 
-# ALB → backend (3001)
+# ALB → backend
 resource "aws_security_group_rule" "ecs_from_alb_3001" {
   type                     = "ingress"
   from_port                = 3001

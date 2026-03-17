@@ -53,6 +53,7 @@ variable "tags" {
   type        = map(string)
 }
 
-variable "rails_secret_key_base_secret_arn" {
-  type = string
+variable "jwt_secret_arn" {
+  description = "JWT_SECRET を格納した Secrets Manager Secret ARN"
+  type        = string
 }

@@ -3,7 +3,7 @@ module "ecr" {
 
   repositories = [
     "otayori-frontend",
-    "otayori-backend",
+    "otayori-backend-go",
   ]
 
   tags = {

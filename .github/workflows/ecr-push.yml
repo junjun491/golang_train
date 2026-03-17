@@ -12,7 +12,7 @@ permissions:
 env:
   AWS_REGION: ap-northeast-1
   AWS_ACCOUNT_ID: "102464981360"
-  BACKEND_REPO: "otayori-backend"
+  BACKEND_REPO: "otayori-backend-go"
   FRONTEND_REPO: "otayori-frontend"
 
 jobs:
