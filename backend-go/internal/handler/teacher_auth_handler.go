@@ -142,3 +142,117 @@ func RegisterTeacher(c *gin.Context) {
 		},
 	})
 }
+
+type LoginTeacherRequest struct {
+	Teacher LoginTeacherParams `json:"teacher"`
+}
+
+type LoginTeacherParams struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func LoginTeacher(c *gin.Context) {
+	var req LoginTeacherRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Errors: []string{"invalid request"},
+		})
+		return
+	}
+
+	req.Teacher.Email = strings.TrimSpace(req.Teacher.Email)
+
+	var id int
+	var name *string
+	var email string
+	var encryptedPassword string
+
+	err := db.DB.QueryRow(
+		context.Background(),
+		`
+		SELECT id, name, email, encrypted_password
+		FROM teachers
+		WHERE email = $1
+		`,
+		req.Teacher.Email,
+	).Scan(&id, &name, &email, &encryptedPassword)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Errors: []string{"Invalid email or password"},
+		})
+		return
+	}
+
+	if !auth.CheckPassword(req.Teacher.Password, encryptedPassword) {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Errors: []string{"Invalid email or password"},
+		})
+		return
+	}
+
+	token, err := auth.GenerateTeacherToken(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Errors: []string{"failed to generate token"},
+		})
+		return
+	}
+
+	c.Header("Authorization", "Bearer "+token)
+	c.JSON(http.StatusOK, TeacherResponse{
+		Data: TeacherResponseData{
+			ID:    id,
+			Name:  name,
+			Email: email,
+		},
+	})
+}
+
+func GetMe(c *gin.Context) {
+	currentTeacherIDValue, exists := c.Get("current_teacher_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Errors: []string{"Unauthorized"},
+		})
+		return
+	}
+
+	currentTeacherID, ok := currentTeacherIDValue.(int)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Errors: []string{"Unauthorized"},
+		})
+		return
+	}
+
+	var id int
+	var name *string
+	var email string
+
+	err := db.DB.QueryRow(
+		context.Background(),
+		`
+		SELECT id, name, email
+		FROM teachers
+		WHERE id = $1
+		`,
+		currentTeacherID,
+	).Scan(&id, &name, &email)
+
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, ErrorResponse{
+			Errors: []string{"Unauthorized"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, TeacherResponse{
+		Data: TeacherResponseData{
+			ID:    id,
+			Name:  name,
+			Email: email,
+		},
+	})
+}
