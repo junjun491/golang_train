@@ -2,7 +2,7 @@
 
 Go / Gin / PostgreSQL で作成した REST API です。
 
-既存の Rails ポートフォリオ（Next.js + Rails API + Terraform + ECS）で実装していた  
+[既存の Rails ポートフォリオ](https://github.com/junjun491/otayori_app)（Next.js + Rails API + Terraform + ECS）で実装していた  
 **teacher 認証導線の一部を Go で再実装したバックエンド API**です。
 
 # このリポジトリの目的
@@ -13,20 +13,6 @@ Go / Gin / PostgreSQL で作成した REST API です。
 - JWT を用いた認証フロー
 - PostgreSQL 接続
 - Repository 層による責務分離
-
-既存ポートフォリオでは以下の構成で動作させています。
-
-```
-Browser
-↓
-Next.js
-↓
-ALB
-↓
-Go API
-↓
-PostgreSQL
-```
 
 # 技術スタック
 
@@ -52,16 +38,13 @@ Go API
 PostgreSQL
 ```
 
-既存ポートフォリオでは以下のインフラ構成で動作しています。
-
-- Terraform
-- ECS Fargate
-- ALB
-- RDS (PostgreSQL)
-- Secrets Manager
-- GitHub Actions
-
 # セットアップ
+
+## 環境変数
+
+- DATABASE_URL: PostgreSQL の接続文字列
+- JWT_SECRET: JWT の署名に使用するシークレットキー
+- PORT: API サーバの起動ポート（未指定の場合は 3001）
 
 ### DB起動
 
@@ -97,6 +80,7 @@ curl localhost:3001/healthz
 - GET /teachers/me
 
 JWT 認証は Authorization ヘッダで行います。
+一部実装中です
 
 ```
 Authorization: Bearer <JWT>
