@@ -90,6 +90,5 @@ Authorization: Bearer <JWT>
 
 - service 層の追加
 - classroom / student API 追加
-- Docker で Go API 起動
 - CI 追加
 - テスト追加
